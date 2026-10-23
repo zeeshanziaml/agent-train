@@ -48,7 +48,7 @@ def main() -> None:
 
     trainer= GRPOTrainer(
         model=MODEL, args=args, train_dataset=dataset,
-        rewards_funcs = answer_reward,
+        reward_funcs = answer_reward,
         peft_config= LoraConfig(r=8,lora_alpha=16,target_modules="all-linear"),
     )
 
