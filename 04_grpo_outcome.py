@@ -14,7 +14,7 @@ def as_text(completion)->str:
     if isinstance(completion,str):
         return completion
     if isinstance(completion,list):
-        return "\n".join(str(m.get("content","")) for m in completion if isinstance(m.dict))
+        return "\n".join(str(m.get("content","")) for m in completion if isinstance(m,dict))
 
 def answer_reward(completions, answer, **kwargs) -> list[float]:
     scores = []
