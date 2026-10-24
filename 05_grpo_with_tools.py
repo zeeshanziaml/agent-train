@@ -105,7 +105,7 @@ def main() -> None:
     rng = random.Random(2026)
     records = []
     for _ in range(96):
-        a,b = rng.randint(8,99), rng.randint(3,25)
+        a,b = rng.randint(1000,9999), rng.randint(100,999)
         records.append({
             "prompt": [{"role":"user", "content": f"Use the multiply tool to calculate {a} * {b}. Read the tool result and finish with ANSWER=<integer>."}],
             "answer": a*b,
