@@ -52,16 +52,48 @@ def main() -> None:
     prompt = [{"role":"user", "content":"Use the move tool to reach position +3, starting from 0. Each call must be step=+1 or step=-1. Check the observation after each move; stop at +3."}]
     # Identical task for every member of each group -> comparable rewards.
     dataset = Dataset.from_list([{"prompt":prompt,"target":3} for _ in range(64)])
+    # args = GRPOConfig(
+    #     output_dir = "outputs/ch06_environment", max_steps =25,
+    #     per_device_train_batch_size = 1, gradient_accumulation_steps=4,
+    #     num_generations=4, max_completion_length=200,
+    #     max_tool_calling_iterations = 5, learning_rate = 5e-6,
+    #     chat_template_kwargs = {"enable_thinking":False},
+    #     model_init_kwargs = {"dtype":"bfloat16"},
+    #     bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
+    #     gradient_checkpointing = True, logging_steps=5,
+    #     save_strategy="no", report_to="none",
+    # )
     args = GRPOConfig(
-        output_dir = "outputs/ch06_environment", max_steps =25,
-        per_device_train_batch_size = 1, gradient_accumulation_steps=4,
-        num_generations=4, max_completion_length=200,
-        max_tool_calling_iterations = 5, learning_rate = 5e-6,
-        chat_template_kwargs = {"enable_thinking":False},
-        model_init_kwargs = {"dtype":"bfloat16"},
+        output_dir="outputs/ch06_environment",
+
+        # Longer training
+        max_steps=1000,
+        learning_rate=1e-5,
+        lr_scheduler_type="constant",
+
+        # GRPO sampling
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=8,
+        num_generations=8,
+        temperature=1.0,
+
+        # Agent tool interaction
+        max_completion_length=384,
+        max_tool_calling_iterations=5,
+
+        # Model settings
+        chat_template_kwargs={"enable_thinking": False},
+        model_init_kwargs={"dtype": "bfloat16"},
         bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
-        gradient_checkpointing = True, logging_steps=5,
-        save_strategy="no", report_to="none",log_completions=True,
+        gradient_checkpointing=True,
+
+        # Logging and checkpointing
+        logging_steps=10,
+        log_completions=True,
+        save_strategy="steps",
+        save_steps=100,
+        save_total_limit=2,
+        report_to="none",
     )
 
     trainer=GRPOTrainer(
