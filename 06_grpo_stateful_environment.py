@@ -56,7 +56,7 @@ def main() -> None:
         output_dir = "outputs/ch06_environment", max_steps =25,
         per_device_train_batch_size = 1, gradient_accumulation_steps=4,
         num_generations=4, max_completion_length=200,
-        max_tool_calling_iteration = 5, learning_rate = 5e-6,
+        max_tool_calling_iterations = 5, learning_rate = 5e-6,
         chat_template_kwargs = {"enable_thinking":False},
         model_init_kwargs = {"dtype":"bfloat16"},
         bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
