@@ -61,7 +61,7 @@ def main() -> None:
         model_init_kwargs = {"dtype":"bfloat16"},
         bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
         gradient_checkpointing = True, logging_steps=5,
-        save_strategy="no", report_to="none",
+        save_strategy="no", report_to="none",log_completions=True,
     )
 
     trainer=GRPOTrainer(
