@@ -21,10 +21,10 @@ class NumberLineEnv:
         self.invalid = 0
         return None # the supplied dataset already has the user prompt
 
-    def move(self,step:int)->str:
-        """Move the agent exactly one unit left or right
+    def move(self, step: int) -> str:
+        """Move the agent exactly one unit left or right.
 
-        Args: 
+        Args:
             step: Must be +1 or -1. Other values are rejected.
 
         Returns:
