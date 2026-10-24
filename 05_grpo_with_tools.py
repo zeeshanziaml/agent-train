@@ -38,42 +38,66 @@ def multiply(a: int, b: int) -> int:
     return a * b
 
 def answer_reward(completions, answer, **kwargs) -> list[float]:
-    """Score numeric correctness, not compliance with an ANSWER=... format.
-
-    Accepts final answers such as 128, ANSWER=128, Answer: <128>,
-    \boxed{128}, and '16 x 8 = 128'. Avoids rewarding a number merely
-    because it appears somewhere in a longer response when an explicit
-    final-answer label is present.
     """
-    number_pattern = r"(?<![\w.])-?\d+(?![\w.])"
+    Reward successful tool use.
+
+    Reward = 1.0 if:
+      1. The agent actually called a tool.
+      2. The agent produced a final answer after the tool response.
+      3. The final numerical answer is correct.
+
+    Otherwise, reward = 0.0.
+    """
     scores = []
 
     for completion, expected in zip(completions, answer):
-        text = as_text(completion)
-        predicted = None
 
-        # Prefer the final explicitly labelled answer, in any format.
-        for line in reversed(text.splitlines()):
-            labels = list(re.finditer(r"\banswer\b", line, flags=re.IGNORECASE))
-            if not labels:
+        # A tool-use trajectory should contain structured messages.
+        if not isinstance(completion, list):
+            scores.append(0.0)
+            continue
+
+        used_tool = False
+        final_text = None
+
+        for message in completion:
+            if not isinstance(message, dict):
                 continue
-            tail = line[labels[-1].end():]
-            nums = re.findall(number_pattern, tail)
-            if nums:
-                # Placeholder + calculation: "Answer: <integer> = 16 x 8 = 128"
-                # Also covers "Answer = 16 x 8 = 128".
-                if re.search(r"<\s*integer\s*>", tail, re.IGNORECASE) or tail.count("=") >= 2:
-                    predicted = int(nums[-1])
-                else:
-                    predicted = int(nums[0])
-                break
 
-        # No explicit answer label: final integer anywhere in the response.
-        if predicted is None:
-            nums = re.findall(number_pattern, text)
-            predicted = int(nums[-1]) if nums else None
+            role = message.get("role")
 
-        scores.append(float(predicted == int(expected)))
+            if role == "tool":
+                # A real tool response was recorded.
+                used_tool = True
+                final_text = None
+
+            elif role == "assistant" and used_tool:
+                content = message.get("content")
+                if isinstance(content, str) and content.strip():
+                    final_text = content
+
+        # No tool execution or no final assistant answer.
+        if not used_tool or not final_text:
+            scores.append(0.0)
+            continue
+
+        # Extract the final numeric answer, regardless of formatting.
+        number_pattern = r"(?<![A-Za-z0-9_])-?\d+(?![A-Za-z0-9_])"
+
+        # Prefer a line explicitly mentioning "answer".
+        answer_lines = [
+            line for line in final_text.splitlines()
+            if re.search(r"\banswer\b", line, re.IGNORECASE)
+        ]
+
+        search_text = answer_lines[-1] if answer_lines else final_text
+        numbers = re.findall(number_pattern, search_text)
+
+        predicted = int(numbers[-1]) if numbers else None
+
+        # Reward only correct answers following actual tool use.
+        reward = float(predicted == int(expected))
+        scores.append(reward)
 
     return scores
 
