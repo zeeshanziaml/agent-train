@@ -16,40 +16,52 @@ def as_text(completion)->str:
     if isinstance(completion,list):
         return "\n".join(str(m.get("content","")) for m in completion if isinstance(m,dict))
 
-def answer_reward(completions, answer, **kwargs):
+def answer_reward(completions, answer, **kwargs) -> list[float]:
+    """Score numeric correctness, not compliance with an ANSWER=... format.
+
+    Accepts final answers such as 128, ANSWER=128, Answer: <128>,
+    \boxed{128}, and '16 x 8 = 128'. Avoids rewarding a number merely
+    because it appears somewhere in a longer response when an explicit
+    final-answer label is present.
+    """
+    number_pattern = r"(?<![\w.])-?\d+(?![\w.])"
     scores = []
 
     for completion, expected in zip(completions, answer):
         text = as_text(completion)
+        predicted = None
 
-        # Preferred format
-        strict = re.findall(
-            r"ANSWER\s*=\s*(-?\d+)\b",
-            text
-        )
+        # Prefer the final explicitly labelled answer, in any format.
+        for line in reversed(text.splitlines()):
+            labels = list(re.finditer(r"\banswer\b", line, flags=re.IGNORECASE))
+            if not labels:
+                continue
+            tail = line[labels[-1].end():]
+            nums = re.findall(number_pattern, tail)
+            if nums:
+                # Placeholder + calculation: "Answer: <integer> = 16 x 8 = 128"
+                # Also covers "Answer = 16 x 8 = 128".
+                if re.search(r"<\s*integer\s*>", tail, re.IGNORECASE) or tail.count("=") >= 2:
+                    predicted = int(nums[-1])
+                else:
+                    predicted = int(nums[0])
+                break
 
-        # Alternative LaTeX format
-        boxed = re.findall(
-            r"\\boxed\{(-?\d+)\}",
-            text
-        )
+        # No explicit answer label: final integer anywhere in the response.
+        if predicted is None:
+            nums = re.findall(number_pattern, text)
+            predicted = int(nums[-1]) if nums else None
 
-        if strict:
-            score = 1.0 if int(strict[-1]) == int(expected) else 0.0
-        elif boxed:
-            score = 0.8 if int(boxed[-1]) == int(expected) else 0.0
-        else:
-            score = 0.0
-
-        scores.append(score)
+        scores.append(float(predicted == int(expected)))
 
     return scores
+
 
 def main() -> None:
     rng = random.Random(2026)
     records = [] 
     for _ in range(128):
-        a,b = rng.randint(1,20), rng.randint(1,12)
+        a,b = rng.randint(8,99), rng.randint(3,25)
         records.append({
             "prompt": [{"role":"user", "content": f"Multiply {a} by {b}. Respond with ANSWER=<integer>."}],
             "answer": a*b,
@@ -57,16 +69,15 @@ def main() -> None:
     dataset = Dataset.from_list(records)
     assert answer_reward(["ANSWER=12","ANSWER=4"],[12,12]) == [1.0,0.0]
     args = GRPOConfig(
-        output_dir = "outputs/ch04_grpo", max_steps = 200,
+        output_dir = "outputs/ch04_grpo", max_steps = 25,
         per_device_train_batch_size=1, gradient_accumulation_steps=4,
-        num_generations=4, max_completion_length=96,
+        num_generations=4, max_completion_length=48,
         learning_rate = 5e-6, beta=0.0,
         chat_template_kwargs = {"enable_thinking": False},
         model_init_kwargs = {"dtype": "bfloat16"},
         bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
         gradient_checkpointing = True, logging_steps=5,
         save_strategy="no", report_to="none",
-        log_completions = True,
     )
 
     trainer= GRPOTrainer(
