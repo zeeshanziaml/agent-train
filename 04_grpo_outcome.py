@@ -27,7 +27,7 @@ def main() -> None:
     rng = random.Random(2026)
     records = [] 
     for _ in range(128):
-        a,b = rng.randint(8,99), rng.randint(3,25)
+        a,b = rng.randint(1,20), rng.randint(1,12)
         records.append({
             "prompt": [{"role":"user", "content": f"Multiply {a} by {b}. Respond with ANSWER=<integer>."}],
             "answer": a*b,
@@ -35,15 +35,16 @@ def main() -> None:
     dataset = Dataset.from_list(records)
     assert answer_reward(["ANSWER=12","ANSWER=4"],[12,12]) == [1.0,0.0]
     args = GRPOConfig(
-        output_dir = "outputs/ch04_grpo", max_steps = 25,
+        output_dir = "outputs/ch04_grpo", max_steps = 200,
         per_device_train_batch_size=1, gradient_accumulation_steps=4,
-        num_generations=4, max_completion_length=48,
+        num_generations=4, max_completion_length=96,
         learning_rate = 5e-6, beta=0.0,
         chat_template_kwargs = {"enable_thinking": False},
         model_init_kwargs = {"dtype": "bfloat16"},
         bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
         gradient_checkpointing = True, logging_steps=5,
         save_strategy="no", report_to="none",
+        log_completions = True,
     )
 
     trainer= GRPOTrainer(
