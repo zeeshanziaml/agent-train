@@ -16,11 +16,33 @@ def as_text(completion)->str:
     if isinstance(completion,list):
         return "\n".join(str(m.get("content","")) for m in completion if isinstance(m,dict))
 
-def answer_reward(completions, answer, **kwargs) -> list[float]:
+def answer_reward(completions, answer, **kwargs):
     scores = []
-    for completion, expected in zip(completions,answer):
-        numbers = re.findall(r"ANSWER\s*=\s*(-?\d+)\b", as_text(completion))
-        scores.append(float(bool(numbers) and int(numbers[-1]) == int(expected)))
+
+    for completion, expected in zip(completions, answer):
+        text = as_text(completion)
+
+        # Preferred format
+        strict = re.findall(
+            r"ANSWER\s*=\s*(-?\d+)\b",
+            text
+        )
+
+        # Alternative LaTeX format
+        boxed = re.findall(
+            r"\\boxed\{(-?\d+)\}",
+            text
+        )
+
+        if strict:
+            score = 1.0 if int(strict[-1]) == int(expected) else 0.0
+        elif boxed:
+            score = 0.8 if int(boxed[-1]) == int(expected) else 0.0
+        else:
+            score = 0.0
+
+        scores.append(score)
+
     return scores
 
 def main() -> None:
