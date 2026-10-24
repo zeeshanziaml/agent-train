@@ -8,17 +8,17 @@ from trl import GRPOConfig, GRPOTrainer
 
 MODEL = os.environ.get("MODEL","Qwen/Qwen3-0.6B")
 
-def multiply(a:int, b:int)->int:
-    """Return the exact product of two integers
+def multiply(a: int, b: int) -> int:
+    """Return the exact product of two integers.
 
-    Args: 
+    Args:
         a: First integer.
         b: Second integer.
 
     Returns:
         The product a times b.
     """
-    return a*b
+    return a * b
 
 def answer_reward(completions, answer, **kwargs) -> list[float]:
     """Score numeric correctness, not compliance with an ANSWER=... format.
