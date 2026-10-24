@@ -25,7 +25,7 @@ class NumberLineEnv:
         """Move the agent exactly one unit left or right
 
         Args: 
-            steps: Must be +1 or -1. Other values are rejected.
+            step: Must be +1 or -1. Other values are rejected.
 
         Returns:
             Your new position and how far you are from the goal.
