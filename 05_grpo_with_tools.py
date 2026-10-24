@@ -8,6 +8,23 @@ from trl import GRPOConfig, GRPOTrainer
 
 MODEL = os.environ.get("MODEL","Qwen/Qwen3-0.6B")
 
+def as_text(completion) -> str:
+    if isinstance(completion, str):
+        return completion
+
+    if isinstance(completion, list):
+        # Extract the last assistant message, not the tool's output
+        assistant_messages = [
+            m for m in completion
+            if isinstance(m, dict)
+            and m.get("role") == "assistant"
+        ]
+
+        if assistant_messages:
+            return str(assistant_messages[-1].get("content") or "")
+
+    return ""
+
 def multiply(a: int, b: int) -> int:
     """Return the exact product of two integers.
 
